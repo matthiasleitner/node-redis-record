@@ -13,12 +13,21 @@
   },
   "main": "lib/redis-record.js",
   "dependencies": {
-    "underscore"      : "*",
-    "hiredis"         : "*",
-    "redis"           : "*",
-    "bases"           : "*"
+    "underscore": "*",
+    "hiredis": "*",
+    "redis": "*",
+    "bases": "*"
   },
   "devDependencies": {
-    "coffee-script"   : "*"
-  }
+    "coffee-script": "*"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "redis",
+    "orm",
+    "coffee-script"
+  ],
+  "license": "MIT"
 }
