@@ -2,7 +2,7 @@
 
 Simple ORM mapper for Redis written in coffee-script
 
-  npm install redis-record
+	npm install redis-record
 
 #Features
 
