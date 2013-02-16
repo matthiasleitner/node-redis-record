@@ -321,7 +321,7 @@ class RedisRecord
             @::[assoc] = (cb) ->
               unless @id == undefined
                 cN = inflection.singularize assoc
-                db.eval list_loopup, 0, cN, @_hasManyKey(assoc), (err, reply) =>
+                db.eval list_lookup, 0, cN, @_hasManyKey(assoc), (err, reply) =>
                   cb err, klass._arrayReplyToObjects(reply)
                 
                 #fetch ids via sort - replaced by eval
