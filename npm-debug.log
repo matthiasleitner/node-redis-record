@@ -1,0 +1,61 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'node',
+1 verbose cli   '/usr/local/bin/npm',
+1 verbose cli   'publish',
+1 verbose cli   'git@github.com:matthiasleitner/node-redis-record.git' ]
+2 info using npm@1.1.46
+3 info using node@v0.8.5
+4 verbose config file /Users/Matthias/.npmrc
+5 verbose config file /usr/local/etc/npmrc
+6 verbose config file /usr/local/lib/node_modules/npm/npmrc
+7 verbose publish [ 'git@github.com:matthiasleitner/node-redis-record.git' ]
+8 verbose read json /Users/Matthias/Documents/Work/Misc/redis-record/git@github.com:matthiasleitner/node-redis-record.git/package.json
+9 verbose cache add [ 'git@github.com:matthiasleitner/node-redis-record.git', null ]
+10 silly cache add name=undefined spec="git@github.com:matthiasleitner/node-redis-record.git" args=["git@github.com:matthiasleitner/node-redis-record.git",null]
+11 verbose parsed url { pathname: 'git@github.com:matthiasleitner/node-redis-record.git',
+11 verbose parsed url   path: 'git@github.com:matthiasleitner/node-redis-record.git',
+11 verbose parsed url   href: 'git@github.com:matthiasleitner/node-redis-record.git' }
+12 silly cache add name="git" spec="github.com:matthiasleitner/node-redis-record.git" args=["git","github.com:matthiasleitner/node-redis-record.git"]
+13 verbose parsed url { protocol: 'github.com:',
+13 verbose parsed url   host: 'matthiasleitner',
+13 verbose parsed url   hostname: 'matthiasleitner',
+13 verbose parsed url   href: 'github.com:matthiasleitner/node-redis-record.git',
+13 verbose parsed url   pathname: '/node-redis-record.git',
+13 verbose parsed url   path: '/node-redis-record.git' }
+14 verbose addNamed [ 'git', 'github.com:matthiasleitner/node-redis-record.git' ]
+15 verbose addNamed [ null, null ]
+16 silly lockFile 66b90e06-iasleitner-node-redis-record-git git@github.com:matthiasleitner/node-redis-record.git
+17 verbose lock git@github.com:matthiasleitner/node-redis-record.git /Users/Matthias/.npm/66b90e06-iasleitner-node-redis-record-git.lock
+18 info addNameTag [ 'git', 'github.com:matthiasleitner/node-redis-record.git' ]
+19 verbose url raw git
+20 verbose url resolving [ 'https://registry.npmjs.org/', './git' ]
+21 verbose url resolved https://registry.npmjs.org/git
+22 info retry registry request attempt 1 at 17:43:28
+23 http GET https://registry.npmjs.org/git
+24 http 200 https://registry.npmjs.org/git
+25 silly registry.get cb [ 200,
+25 silly registry.get   { vary: 'Accept',
+25 silly registry.get     server: 'CouchDB/1.2.1 (Erlang OTP/R15B)',
+25 silly registry.get     etag: '"VAR5DWPCMNYAII8MUZ86Y03"',
+25 silly registry.get     date: 'Sat, 16 Feb 2013 17:41:27 GMT',
+25 silly registry.get     'content-type': 'application/json',
+25 silly registry.get     'content-length': '4899' } ]
+26 silly lockFile 66b90e06-iasleitner-node-redis-record-git git@github.com:matthiasleitner/node-redis-record.git
+27 error Error: No compatible version found: git@'github.com:matthiasleitner/node-redis-record.git'
+27 error Valid install targets:
+27 error ["0.1.0","0.1.1","0.1.2","0.1.3"]
+27 error     at installTargetsError (/usr/local/lib/node_modules/npm/lib/cache.js:553:10)
+27 error     at /usr/local/lib/node_modules/npm/lib/cache.js:477:15
+27 error     at saved (/usr/local/lib/node_modules/npm/node_modules/npm-registry-client/lib/get.js:138:7)
+27 error     at /usr/local/lib/node_modules/npm/node_modules/graceful-fs/graceful-fs.js:220:7
+27 error     at Object.oncomplete (fs.js:297:15)
+28 error If you need help, you may report this log at:
+28 error     <http://github.com/isaacs/npm/issues>
+28 error or email it to:
+28 error     <npm-@googlegroups.com>
+29 error System Darwin 12.2.1
+30 error command "node" "/usr/local/bin/npm" "publish" "git@github.com:matthiasleitner/node-redis-record.git"
+31 error cwd /Users/Matthias/Documents/Work/Misc/redis-record
+32 error node -v v0.8.5
+33 error npm -v 1.1.46
+34 verbose exit [ 1, true ]

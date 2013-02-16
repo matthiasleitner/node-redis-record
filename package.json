@@ -2,7 +2,7 @@
   "author": "Matthias Leitner (http://matthiasleitner.com)",
   "name": "redis-record",
   "description": "Simple ORM mapper for Redis written in coffee-script",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "homepage": "https://github.com/matthiasleitner/node-redis-record",
   "repository": {
     "type": "git",
