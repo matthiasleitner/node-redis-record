@@ -2,6 +2,8 @@
 
 Simple ORM mapper for Redis written in coffee-script
 
+  npm install redis-record
+
 #Features
 
 - 1:N & N:1 relationships
