@@ -7,9 +7,9 @@ Simple ORM mapper for Redis written in coffee-script
 #Features
 
 - 1:N & N:1 relationships
-- key lookup 
+- key lookup
 - unique key generation
-	
+
 
 #Example usage
 
@@ -21,53 +21,75 @@ Simple ORM mapper for Redis written in coffee-script
 	  @hasUniqKey: true
 
 	module.exports = User
-	
+
+#### Note
+When using relationships between models the path to the models directory (relative to the project root) needs to be set like:
+
+	RedisRecord.setModelPath("app/models")
+
 
 ###Get all objects of certain type:
 
 	User.all (err, reply) ->
-	
+
 ###Get object by ID
 
 	User.find <id>, (err, reply) ->
-	
+
 
 ###Get object by attribute
 
 	User.findBy "key", <some_key>, (err, reply) ->
-	
+
 ###Get number of object of type
 
 	User.count (err, reply) ->
-	
+
 ###Create new object
 
 	User.create object, (err, reply) ->
-	
+
 ###Find or create object
 
 	User.findOrCreate object, (err, reply) ->
-	
+
 Tries to find object by id included in object otherwise creates a new one
-	
+
 
 ###Save object
-	
-	object.save (err, reply) ->  
-	
+
+	object.save (err, reply) ->
+
 ###Delete object
-	
-	object.delete (err, reply) ->  
-	
-	
-###Get attribute of object
-	
-  	object.get <attr_name>  
+
+	object.delete (err, reply) ->
+
 
 ###Get attribute of object
-	
+
+  	object.get <attr_name>
+
+###Get attribute of object
+
     object.set <attr_name>, <attr_value>
 
+
+## Contributing
+
+* Make the code better, add some functionality.
+* [Fork it](http://help.github.com/forking/)
+* Create new branch to make your changes
+* Commit all your changes to your branch
+* Submit a [pull request](http://help.github.com/pull-requests/)
+
+## Contact
+
+Feel free to get in touch.
+
+* Website: <http://matthiasleitner.com>
+* Twitter: [@matthiasleitner](http://twitter.com/matthiasleitner)
+
+## Licence
 
 ©2013 Matthias Leitner and available under the MIT license:
 

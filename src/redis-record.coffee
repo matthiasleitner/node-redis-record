@@ -9,11 +9,25 @@ _          = require("underscore")
 #
 class RedisRecord
 
+  config = null
+
+  class Config
+    constructor: (@config) ->
+    get: -> @config
+  @setModelPath: (load_path) ->
+    config ?= new Config(load_path)
+  @getModelPath: ->
+    if config
+      config.get()
+    else
+      throw "No model load path set - use RedisRecord.setModelPath to define the path where your models are"
+
+
   # lua script used to fetch multiple instances of object
   list_lookup = """
                 -- fetch all assoc ids
                 local ids = redis.call("ZRANGE", ARGV[2], 0, -1)
-                  
+
                 local result = {}
                 local hashValue = nil
 
@@ -34,14 +48,13 @@ class RedisRecord
 
   klass = null
 
-  # Constructor 
+  # Constructor
   #
   #
   constructor: (@obj) ->
     #assign shorthand for class methods
     klass = @constructor
 
-    console.log "consturctor #{klass.name}"
     # generate uniq key if defined
     if klass.hasUniqKey
       unless obj.key
@@ -66,7 +79,7 @@ class RedisRecord
 
   set: (attr, value) ->
     @obj[attr] = value
-  
+
   # Public: Delete object from redis
   #
   #
@@ -74,38 +87,38 @@ class RedisRecord
     console.log "delete #{klass._name()} with id: #{@id}"
 
     # delete actual object hash
-    db.DEL @_dbKey(), (err, reply) =>  
-    
+    db.DEL @_dbKey(), (err, reply) =>
+
       # delete from class index
       db.ZREM klass._indexKey(), @id, cb
-      
+
     @_removeAssociations()
 
   # Public: Persist object
   #
   #
-  save: (cb, create = false) ->    
+  save: (cb, create = false) ->
     # new object
     if @id == undefined || @id == null
       @_nextId (id) =>
         @id = id
         @obj.createdAt = new Date()
 
-        # once ID is fetched call save again 
+        # once ID is fetched call save again
         @save(cb, true)
     else
       @_stripFalsyValues()
 
       @obj.updatedAt = new Date()
-      
-      db.HMSET @_dbKey(), klass.stringifyAttributes(@obj), (err, reply) =>  
+
+      db.HMSET @_dbKey(), klass.stringifyAttributes(@obj), (err, reply) =>
         if !err
           if create
             @_afterCreate cb
           else
             cb null, reply if typeof cb == "function"
         else
-          cb err, null          
+          cb err, null
 
   toString: ->
     JSON.stringify(@obj)
@@ -113,7 +126,7 @@ class RedisRecord
   toJSON: ->
     @obj
 
-  
+
   # ---------------------------------------------------------
   # static methods
   # ---------------------------------------------------------
@@ -128,7 +141,7 @@ class RedisRecord
     db.eval list_lookup, 0, @_name(), @_indexKey(), (err, reply) =>
       cb err, @_arrayReplyToObjects(reply)
 
-    #cN = @_name()        
+    #cN = @_name()
     #db.sort "#{cN}_ids", "by", "#{cN}|*->id", "get", "#{cN}|*->name", "get", "#{cN}|*->createdAt","get", "#{cN}|*->updatedAt", (err, reply) =>
 
   # Public: find and load instance for given id
@@ -156,7 +169,7 @@ class RedisRecord
           cb err, reply
     else
       @create obj, cb
-      
+
 
   # Public: find and load instance for given id
   #
@@ -183,7 +196,7 @@ class RedisRecord
   #
   @stringifyAttributes: (obj) ->
     sObj = {}
-    for k,v of obj      
+    for k,v of obj
       sObj[k] = "#{v}"
     sObj
 
@@ -191,7 +204,7 @@ class RedisRecord
   #
   #
   @generateKey: (length = 32) ->
-  
+
     maxNum = Math.pow(62, length)
     numBytes = Math.ceil(Math.log(maxNum) / Math.log(256))
 
@@ -206,8 +219,8 @@ class RedisRecord
       break unless num >= maxNum
 
     bases.toBase62 num
-                
-  
+
+
   # ---------------------------------------------------------
   # private methods
   # ---------------------------------------------------------
@@ -231,23 +244,22 @@ class RedisRecord
     console.log "stored #{klass._name()} with id: #{@id} "
     db.ZADD klass._indexKey(), @id, @id, (err, reply) =>
       @obj.id = @id
-      
-      console.log "after create name #{klass._name()}"
+
       @_applyAssociations()
       # pass copy of object to callback
       cb err, _.clone(@)
 
   _applyAssociations: (cb) ->
     @_handleAssociations cb, "add"
-  
-  _removeAssociations: (cb) ->  
+
+  _removeAssociations: (cb) ->
     @_handleAssociations cb, "remove"
 
   # Private: maintain associations on object creation and removal
   #
   #
   _handleAssociations: (cb, mode) ->
-    if @id 
+    if @id
       @_maintainAssociationReferences(cb, mode)
       @_maintainLookupKeys(mode)
 
@@ -273,10 +285,10 @@ class RedisRecord
                   console.log "error"
             else
               db.DEL klass._lookUpKey(key, @obj[key])
-  
+
   # Private: redis key for current instance
   #
-  # 
+  #
   _dbKey: ->
     klass._dbKey @id
 
@@ -287,7 +299,6 @@ class RedisRecord
   _stripFalsyValues: ->
     _.each @obj, (v, k) =>
       delete @obj[k] unless v
-    
 
   @_lookUpKey: (key,value) ->
     "#{@_name()}|#{key}|#{value}"
@@ -304,13 +315,12 @@ class RedisRecord
     if @belongsTo
       for assoc in @belongsTo
         do (assoc) =>
-          unless @::[assoc] 
+          unless @::[assoc]
             @::[assoc] = (cb) ->
-
               assocKey = "#{assoc}Id"
-              console.log "assocKey #{assocKey}"
               if @obj[assocKey]
-                require("./#{assoc}").find @obj[assocKey], cb
+                # go out of node-modules directory
+                require("../../../#{klass.getModelPath()}/#{assoc}").find @obj[assocKey], cb
                 #db.HGETALL "#{assoc}|#{@obj[assocKey]}", cb
 
   @_gernateHasManyAssociationsMethods: ->
@@ -323,7 +333,7 @@ class RedisRecord
                 cN = inflection.singularize assoc
                 db.eval list_lookup, 0, cN, @_hasManyKey(assoc), (err, reply) =>
                   cb err, klass._arrayReplyToObjects(reply)
-                
+
                 #fetch ids via sort - replaced by eval
                 #db.sort @_hasManyKey(assoc), "get", "#{cN}|*->createdAt", cb
 
@@ -337,10 +347,10 @@ class RedisRecord
           db.reply_to_object(obj)
 
       reply
-          
+
   @_name: ->
     @name.toLowerCase()
-    
+
   # Private: redis key for object
   #
   #
@@ -358,7 +368,7 @@ class RedisRecord
   #
   @_indexKey: ->
     "#{@_name()}_ids"
-                
+
 
 
 module.exports = RedisRecord
