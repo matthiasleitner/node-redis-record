@@ -48,6 +48,13 @@ class RedisRecord
 
   klass = null
 
+  @uniqKeyLength: 32
+
+  @hasMany: []
+  @belongsTo: []
+  @hasAndBelongsToMany: []
+  @lookUpBy: []
+
   # Constructor
   #
   #
@@ -58,7 +65,7 @@ class RedisRecord
     # generate uniq key if defined
     if klass.hasUniqKey
       unless obj.key
-        obj.key = klass.generateKey()
+        obj.key = klass.generateKey(klass.uniqKeyLength)
 
     @id = obj.id
 
@@ -99,10 +106,12 @@ class RedisRecord
   #
   save: (cb, create = false) ->
     # new object
+
+    @set("createdAt",new Date()) unless @get("createdAt")
+
     if @id == undefined || @id == null
       @_nextId (id) =>
         @id = id
-        @obj.createdAt = new Date()
 
         # once ID is fetched call save again
         @save(cb, true)
@@ -150,7 +159,7 @@ class RedisRecord
   @find: (id, cb) ->
     return unless id
 
-    if id.length != 32 && !isNaN(id)
+    if id.length != @uniqKeyLength && !isNaN(id)
       db.HGETALL @_dbKey(id), (err, obj) =>
         if obj
           obj.id = id
@@ -264,27 +273,32 @@ class RedisRecord
       @_maintainLookupKeys(mode)
 
   _maintainAssociationReferences: (cb, mode) ->
-    if klass.belongsTo
-      for assoc in klass.belongsTo
-        do (assoc) =>
-          if @obj["#{assoc}Id"]
-            if mode == "add"
-              db.ZADD @_assocKey(assoc), @id, @id, cb
-            else
-              db.ZREM @_assocKey(assoc), @id, cb
+    for assoc in klass.hasAndBelongsToMany
+      do (assoc) =>
+        if @obj["#{assoc}Ids"]
+          if mode == "add"
+            db.ZADD @_assocKey(assoc), @id, @id, cb
+          else
+
+    for assoc in klass.belongsTo
+      do (assoc) =>
+        if @obj["#{assoc}Id"]
+          if mode == "add"
+            db.ZADD @_assocKey(assoc), @id, @id, cb
+          else
+            db.ZREM @_assocKey(assoc), @id, cb
 
 
   _maintainLookupKeys: (mode) ->
-    if klass.lookUpBy
-      for key in klass.lookUpBy
-        do (key) =>
-          if @obj[key]
-            if mode == "add"
-              db.SET klass._lookUpKey(key, @obj[key]), @id, (err, reply) ->
-                if err
-                  console.log "error"
-            else
-              db.DEL klass._lookUpKey(key, @obj[key])
+    for key in klass.lookUpBy
+      do (key) =>
+        if @obj[key]
+          if mode == "add"
+            db.SET klass._lookUpKey(key, @obj[key]), @id, (err, reply) ->
+              if err
+                console.log "error"
+          else
+            db.DEL klass._lookUpKey(key, @obj[key])
 
   # Private: redis key for current instance
   #
@@ -308,31 +322,39 @@ class RedisRecord
   #
   #
   @_generateAssociationMethods: ->
-    @_gernateHasManyAssociationsMethods()
-    @_gernateBelongsToAssociationsMethods()
+    @_gernateHasManyMethods()
+    @_gernateBelongsToMethods()
 
-  @_gernateBelongsToAssociationsMethods: ->
-    if @belongsTo
-      for assoc in @belongsTo
-        do (assoc) =>
-          unless @::[assoc]
-            @::[assoc] = (cb) ->
-              assocKey = "#{assoc}Id"
-              if @obj[assocKey]
-                # go out of node-modules directory
-                require("../../../#{klass.getModelPath()}/#{assoc}").find @obj[assocKey], cb
-                #db.HGETALL "#{assoc}|#{@obj[assocKey]}", cb
+  @_gernateBelongsToMethods: ->
+    for assoc in @belongsTo
+      do (assoc) =>
+        unless @::[assoc]
+          @::[assoc] = (cb) ->
+            assocKey = "#{assoc}Id"
+            if @obj[assocKey]
+              # go out of node-modules directory
+              require("../../../#{klass.getModelPath()}/#{assoc}").find @obj[assocKey], cb
+              #db.HGETALL "#{assoc}|#{@obj[assocKey]}", cb
 
-  @_gernateHasManyAssociationsMethods: ->
-    if @hasMany
-      for assoc in @hasMany
-        do (assoc) =>
-          unless @::[assoc]
-            @::[assoc] = (cb) ->
-              unless @id == undefined
-                cN = inflection.singularize assoc
-                db.eval list_lookup, 0, cN, @_hasManyKey(assoc), (err, reply) =>
-                  cb err, klass._arrayReplyToObjects(reply)
+  @_gernateHasManyMethods: ->
+    for assoc in @hasMany
+      do (assoc) =>
+        className = inflection.singularize assoc
+        unless @::[assoc]
+          @::[assoc] = (cb) ->
+            unless @id == undefined
+              db.eval list_lookup, 0, className, @_hasManyKey(assoc), (err, reply) =>
+                cb err, klass._arrayReplyToObjects(reply, assoc)
+
+        countMethodName = "#{assoc}Count"
+
+        unless @::[countMethodName]
+          console.log "generating count method #{countMethodName}"
+          @::[countMethodName] = (cb) ->
+            console.log "getting lengt of #{@_hasManyKey(assoc)}"
+            db.ZCARD @_hasManyKey(assoc), (err, count) =>
+              cb err, count
+
 
                 #fetch ids via sort - replaced by eval
                 #db.sort @_hasManyKey(assoc), "get", "#{cN}|*->createdAt", cb
@@ -340,11 +362,14 @@ class RedisRecord
   # Private: generate objects from array redis reply
   #
   #
-  @_arrayReplyToObjects: (reply) ->
+  @_arrayReplyToObjects: (reply, objectClass = klass.name) ->
     # map array of redis replies to objects
       if reply
-        reply = reply.map (obj)->
-          db.reply_to_object(obj)
+        className = inflection.singularize(objectClass.toLowerCase())
+        Model = require("../../../#{klass.getModelPath()}/#{className}")
+        reply = reply.map (obj) =>
+          new Model(db.reply_to_object(obj))
+
 
       reply
 

@@ -1,6 +1,6 @@
 #node-redis-record
 
-Simple ORM mapper for Redis written in coffee-script
+Simple ORM for Redis written in coffee-script
 
 	npm install redis-record
 
