@@ -8,17 +8,46 @@ _          = require("underscore")
 #
 #
 class RedisRecord
-
-  config = null
-
   class Config
-    constructor: (@config) ->
-    get: -> @config
-  @setModelPath: (load_path) ->
-    config ?= new Config(load_path)
-  @getModelPath: ->
-    if config
-      config.get()
+    constructor: (@_config = {}) ->
+    get: (attr = null) ->
+      if attr
+        config_attr = @_config[attr]
+        unless config_attr
+          setterName = inflection.camelize(attr)
+          throw "No #{setterName} set - use RedisRecord.set#{setterName} to set it"
+        config_attr
+      else
+        @_config
+    set: (attr, value) ->
+      @_config[attr] = value
+
+  _config = null
+  _config ?= new Config()
+
+  @setConfig: (config) ->
+    _config = new Config(config)
+  @getConfig: ->
+    _config
+
+  @getNamespace: ->
+    namespace = _config.get("namespace")
+    if !namespace
+      ""
+    else
+      "#{namespace}:"
+
+
+  @setNamespace: (namespace) ->
+    _config.set("namespace", namespace)
+
+  @setNamespace("")
+
+  @setModelLoadPath: (load_path) ->
+    _config.set("model_load_path", load_path)
+  @getModelLoadPath: ->
+    if _config
+      _config.get("model_load_path")
     else
       throw "No model load path set - use RedisRecord.setModelPath to define the path where your models are"
 
@@ -32,7 +61,7 @@ class RedisRecord
                 local hashValue = nil
 
                 -- generate correct namespace
-                local namespace = ARGV[1].."|"
+                local namespace = ARGV[3]..ARGV[1].."|"
 
                 for i,v in ipairs(ids) do
                   hashValue = redis.call("HGETALL", namespace..v)
@@ -45,7 +74,6 @@ class RedisRecord
 
   # init redis connection
   db = redis.createClient()
-
   klass = null
 
   @uniqKeyLength: 32
@@ -147,7 +175,7 @@ class RedisRecord
   #
   #
   @all: (cb) ->
-    db.eval list_lookup, 0, @_name(), @_indexKey(), (err, reply) =>
+    db.eval list_lookup, 0, @_name(), @_indexKey(), @getNamespace(), (err, reply) =>
       cb err, @_arrayReplyToObjects(reply)
 
     #cN = @_name()
@@ -235,18 +263,18 @@ class RedisRecord
   # ---------------------------------------------------------
 
   _assocKey: (assoc) ->
-    cN = inflection.pluralize klass._name()
-    assocId = @obj["#{assoc}Id"]
-    "#{cN}_for_#{assoc}|#{assocId}"
+    assocId = @get("#{assoc}Id")
+    className = inflection.pluralize(klass._name())
+    "#{klass.getNamespace()}#{className}_for_#{assoc}|#{assocId}"
 
   _hasManyKey: (assoc)->
-    "#{assoc}_for_#{klass._name()}|#{@id}"
+    "#{klass.getNamespace()}#{assoc}_for_#{@constructor.name.toLowerCase()}|#{@id}"
 
   # Private: generate id for next instance
   #
   #
   _nextId: (cb) ->
-    db.INCR "#{klass._name()}|count", (err, val) =>
+    db.INCR klass._countKey(), (err, val) =>
       cb(val)
 
   _afterCreate: (cb) ->
@@ -314,9 +342,6 @@ class RedisRecord
     _.each @obj, (v, k) =>
       delete @obj[k] unless v
 
-  @_lookUpKey: (key,value) ->
-    "#{@_name()}|#{key}|#{value}"
-
 
   # Private: generate getter methods for associated models
   #
@@ -333,7 +358,7 @@ class RedisRecord
             assocKey = "#{assoc}Id"
             if @obj[assocKey]
               # go out of node-modules directory
-              require("../../../#{klass.getModelPath()}/#{assoc}").find @obj[assocKey], cb
+              require("../../../#{klass.getModelLoadPath()}/#{assoc}").find @obj[assocKey], cb
               #db.HGETALL "#{assoc}|#{@obj[assocKey]}", cb
 
   @_gernateHasManyMethods: ->
@@ -343,7 +368,7 @@ class RedisRecord
         unless @::[assoc]
           @::[assoc] = (cb) ->
             unless @id == undefined
-              db.eval list_lookup, 0, className, @_hasManyKey(assoc), (err, reply) =>
+              db.eval list_lookup, 0, className, @_hasManyKey(assoc), klass.getNamespace(), (err, reply) =>
                 cb err, klass._arrayReplyToObjects(reply, assoc)
 
         countMethodName = "#{assoc}Count"
@@ -366,7 +391,7 @@ class RedisRecord
     # map array of redis replies to objects
       if reply
         className = inflection.singularize(objectClass.toLowerCase())
-        Model = require("../../../#{klass.getModelPath()}/#{className}")
+        Model = require("../../../#{@getModelLoadPath()}/#{className}")
         reply = reply.map (obj) =>
           new Model(db.reply_to_object(obj))
 
@@ -376,24 +401,28 @@ class RedisRecord
   @_name: ->
     @name.toLowerCase()
 
+  @_namespaced_name: ->
+    "#{@getNamespace()}#{@_name()}"
+
   # Private: redis key for object
   #
   #
   @_dbKey: (id) ->
-    "#{@_name()}|#{id}"
+    "#{@_namespaced_name()}|#{id}"
 
   # Private: redis key holding number of objects for model
   #
   #
   @_countKey: (id) ->
-    "#{@_name()}|count"
+    "#{@_namespaced_name()}|count"
 
   # Private: redis key for set holding object index
   #
   #
   @_indexKey: ->
-    "#{@_name()}_ids"
+    "#{@_namespaced_name()}_ids"
 
-
+  @_lookUpKey: (key,value) ->
+    "#{@_namespaced_name()}|#{key}|#{value}"
 
 module.exports = RedisRecord
